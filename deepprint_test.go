@@ -21,6 +21,7 @@ type person struct {
 	parents [2]string
 	c       chan int
 	f       F
+	p       *string
 }
 
 type F func()

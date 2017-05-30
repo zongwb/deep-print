@@ -12,6 +12,7 @@ import (
 
 const (
 	INDENT = "  "
+	nilAngleString    = "<nil>"
 )
 
 // DeepPrint prints the content of s recursively into a string.
@@ -46,18 +47,30 @@ func deepPrint(w io.Writer, v reflect.Value, prefix, indent string) error {
 	case reflect.String:
 		_, err := fmt.Fprintf(w, "\"%s\"", v.String())
 		return err
-	case reflect.Array, reflect.Slice:
+	case reflect.Array:
+		return printSlice(w, v, prefix, indent)
+	case reflect.Slice:
+		if v.IsNil() {
+			fmt.Fprint(w, nilAngleString)
+			return nil
+		}
 		return printSlice(w, v, prefix, indent)
 	case reflect.Map:
+		if v.IsNil() {
+			fmt.Fprint(w, nilAngleString)
+			return nil
+		}
 		return printMap(w, v, prefix, indent)
 	case reflect.Struct:
 		return printStruct(w, v, prefix, indent)
 	case reflect.Interface, reflect.Ptr:
-		// This case should not be called, as reflect.Indirect is used
-		// in recursion.
+		if v.IsNil() {
+			fmt.Fprint(w, nilAngleString)
+			return nil
+		}
 		return deepPrint(w, v.Elem(), prefix, indent)
 	default:
-		fmt.Fprintf(w, "non-printable type")
+		fmt.Fprintf(w, "non-printable type %v", v.Kind())
 	}
 	return nil
 }
@@ -106,7 +119,7 @@ func printStruct(w io.Writer, v reflect.Value, prefix, indent string) error {
 		key := prefix + indent + "\"" + v.Type().Field(i).Name + "\": "
 		fmt.Fprint(w, key)
 		newPrefix := padRight(prefix, " ", len(key))
-		err := deepPrint(w, reflect.Indirect(v.Field(i)), newPrefix, indent)
+		err := deepPrint(w, v.Field(i), newPrefix, indent)
 		if err != nil {
 			return err
 		}
